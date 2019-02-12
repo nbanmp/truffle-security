@@ -43,12 +43,13 @@ describe('helpers.js', function() {
         });
 
         it('should call printVersion', async () => {
-            const stubAPI = sinon.stub(armlet, 'ApiVersion').returns('1.0.0');
+            const stubAPI = sinon.stub(armlet, 'ApiVersion').returns({ 'api': '1.0.0' });
             const stubLog = sinon.stub(console, 'log');
             await helpers.printVersion();
             assert.ok(stubAPI.called);
             assert.ok(stubLog.called);
             stubLog.restore();
+            stubAPI.restore();
         });
 
         it('should display helpMessage', async () => {
@@ -68,8 +69,12 @@ describe('helpers.js', function() {
             for (const t of expected) {
                 compareTest(t[0], t[1], t[2], t[3], t[4]);
             }
-        });
+        }); 
 
+        it('should sort and convert object to a string', () => {
+            const res = helpers.versionJSON2String({ mythx: '1.0.1', 'solc': '0.5.0', 'api': '1.0.0' });
+            assert.equal(res, 'api: 1.0.0, mythx: 1.0.1, solc: 0.5.0');
+        })
     });
 
     describe('Armlet authentication analyze', () => {
@@ -450,6 +455,36 @@ describe('helpers.js', function() {
             delete truffleJSON.deployedBytecode;
             assert.ok(!stub.called);
             assert.deepEqual(result, truffleJSON);
+        });
+    });
+
+    describe('analyze', () => {
+        let logStub;
+        let config;
+        beforeEach(() => {
+            helpers = rewire('../')
+            logStub = sinon.stub();
+            warnStub = sinon.stub();
+            errorStub = sinon.stub();
+            config = {
+                logger: {
+                    log: logStub,
+                    warn: warnStub,
+                    error: errorStub,
+                },
+            };
+        });
+
+        it('should return error when passed value for limit is not a number', async () => {
+            config.limit = 'test';
+            await rewiredHelpers.analyze(config);
+            assert.equal(logStub.getCall(0).args[0], 'Rate limit value should be a number; got test.')
+        });
+
+        it('should return error when limit is value is out of acceptible range', async () => {
+            config.limit = -1;
+            await rewiredHelpers.analyze(config);
+            assert.equal(errorStub.getCall(0).args[0], 'Rate limit value should be between 0 and 10; got -1.')
         });
     });
 });
