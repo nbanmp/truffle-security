@@ -210,7 +210,7 @@ const doAnalysis = async (client, config, jsonFiles, contractNames = null, limit
         try {
             const {issues, status} = await client.analyzeWithStatus(analyzeOpts);
             if (config.debug) {
-                config.logger.debug(`UUID for this job is ${status.uuid}`);
+                config.logger.debug(`UUID for Smart Contract ${obj.buildObj.contractName} is ${status.uuid}`);
                 if (config.debug > 1) {
                     config.logger.debug(`${util.inspect(issues, {depth: null})}`);
                     config.logger.debug(`${util.inspect(status, {depth: null})}`);
@@ -293,15 +293,19 @@ const getNotFoundContracts = (mythXIssuesObjects, contracts) => {
  * @param {Object} config - truffle configuration object.
  */
 async function analyze(config) {
-    const rateLimit = config.rateLimit || defaultAnalyzeRateLimit;
-    const log = config.logger.log;
+    const rateLimit = config.limit || defaultAnalyzeRateLimit;
+    const logger = config.logger;
+    const log = logger.log;
     if (isNaN(rateLimit)) {
-        log(`rateLimit parameter should be a number; got ${rateLimit}.`);
+        log(`Rate limit value should be a number; got ${rateLimit}.`);
         return;
     }
-    if (rateLimit < 0 || rateLimit > defaultAnalyzeRateLimit) {
-        log(`rateLimit should be between 0 and ${defaultAnalyzeRateLimit}; got ${rateLimit}`);
+    if (rateLimit < 0) {
+        logger.error(`Rate limit value should be between 0 and ${defaultAnalyzeRateLimit}; got ${rateLimit}.`);
         return;
+    }
+    if (rateLimit > defaultAnalyzeRateLimit) {
+        logger.warn(`Rate limit value should be between at most ${defaultAnalyzeRateLimit}; got ${rateLimit}. Keeping default value.`);
     }
     const armletOptions = {
         // set up for client tool usage tracking under the name 'truffle'
@@ -388,7 +392,7 @@ function compareMessLCRange(mess1, mess2) {
 }
 
 async function writeContracts(contracts, options) {
-    var logger = options.logger || console;
+    let logger = options.logger || console;
 
     await promisify(mkdirp)(options.contracts_build_directory);
 
@@ -396,7 +400,7 @@ async function writeContracts(contracts, options) {
         logger.log('Writing artifacts to .' + path.sep + path.relative(options.working_directory, options.contracts_build_directory) + OS.EOL);
     }
 
-    var extra_opts = {
+    let extra_opts = {
         network_id: options.network_id
     };
 
